@@ -1,11 +1,13 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return res.status(500).json({
-      error: "OPENAI_API_KEY is not configured in Vercel."
+      error: "GEMINI_API_KEY is not configured."
     });
   }
 
@@ -23,36 +25,36 @@ export default async function handler(req, res) {
           .slice(-16)
       : [];
 
+    const contents = safeMessages.map(m => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [
+        {
+          text: m.content
+        }
+      ]
+    }));
+
     const response = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
       {
         method: "POST",
 
         headers: {
           "Content-Type": "application/json",
-          "Authorization":
-            `Bearer ${process.env.OPENAI_API_KEY}`
+          "x-goog-api-key": process.env.GEMINI_API_KEY
         },
 
         body: JSON.stringify({
-          model: process.env.AI_MODEL || "gpt-4o-mini",
-
-          messages: [
-            {
-              role: "system",
-
-              content: `
+          system_instruction: {
+            parts: [
+              {
+                text: `
 You are CHIKKY, Boss's intelligent personal AI assistant.
 
 Call the user "Boss" naturally.
 
-Be:
-- intelligent
-- helpful
-- practical
-- friendly
-- concise when possible
-- clear when explaining difficult topics
+Be intelligent, helpful, practical, friendly,
+and clear when explaining difficult topics.
 
 You can help with:
 - studying
@@ -61,22 +63,23 @@ You can help with:
 - planning
 - brainstorming
 - AI projects
-- general questions
 - productivity
+- general questions
 
-Never claim that you can control a device,
+Never claim you can control a device,
 access private information, or perform an action
 unless an actual tool provides that capability.
-
-If you do not have access to current information,
-say that you cannot verify it live.
 `
-            },
+              }
+            ]
+          },
 
-            ...safeMessages
-          ],
+          contents: contents,
 
-          temperature: 0.7
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1000
+          }
         })
       }
     );
@@ -87,21 +90,23 @@ say that you cannot verify it live.
       return res.status(response.status).json({
         error:
           data?.error?.message ||
-          "AI request failed"
+          "Gemini request failed"
       });
     }
 
+    const reply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("")
+        .trim();
+
     return res.status(200).json({
-      reply:
-        data?.choices?.[0]?.message?.content ||
-        "I did not receive a response."
+      reply: reply || "I did not receive a response."
     });
 
   } catch (error) {
-
     return res.status(500).json({
       error: error?.message || "Server error"
     });
-
   }
-            }
+}
