@@ -1,10 +1,457 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050912"><title>PREM'S JARVIS</title><style>
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 15%,#10233a 0,#050912 42%,#020409 100%);color:#eafcff;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}.app{max-width:1000px;margin:auto;min-height:100vh;display:flex;flex-direction:column;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;border:1px solid #17364a;background:#06101ae6;border-radius:20px;padding:14px 16px;box-shadow:0 0 35px #00d9ff12}.brand{font-weight:800;letter-spacing:2px}.status{font-size:12px;color:#73f6ff}.orb{width:150px;height:150px;border-radius:50%;margin:35px auto 18px;background:radial-gradient(circle,#b8fbff 0,#27ddff 18%,#06769a 40%,transparent 69%);box-shadow:0 0 30px #00e5ff,0 0 90px #00e5ff33;animation:pulse 3s infinite}.orb.active{animation:pulse .8s infinite}@keyframes pulse{50%{transform:scale(1.06);filter:brightness(1.3)}}.hello{text-align:center}.hello h1{font-size:clamp(25px,6vw,44px);margin:8px 0}.hello p{color:#8ca8b5}.chat{flex:1;margin-top:22px;border:1px solid #17364a;background:#050c14cc;border-radius:22px;padding:14px;min-height:300px;max-height:48vh;overflow:auto}.msg{padding:12px 14px;margin:9px 0;border-radius:15px;line-height:1.45;white-space:pre-wrap}.user{background:#0c3850;margin-left:15%;border:1px solid #155d79}.bot{background:#08141d;margin-right:10%;border:1px solid #17364a}.composer{display:flex;gap:9px;margin-top:12px}.composer input{flex:1;background:#07111a;border:1px solid #1b4257;color:white;border-radius:16px;padding:15px;outline:none}.btn{border:1px solid #1c7891;background:#08202d;color:#bdfaff;border-radius:15px;padding:0 16px;font-weight:700}.mic{width:52px}.quick{display:flex;gap:8px;overflow:auto;margin-top:10px}.quick button{white-space:nowrap;background:#07141d;border:1px solid #17364a;color:#8debf4;border-radius:999px;padding:8px 12px}.foot{text-align:center;color:#55717e;font-size:11px;padding:12px} @media(max-width:600px){.app{padding:10px}.orb{width:125px;height:125px;margin-top:24px}.chat{max-height:52vh}.composer input{min-width:0}.btn{padding:0 13px}}
-</style></head><body><main class="app"><header class="top"><div class="brand">PREM'S JARVIS</div><div class="status" id="status">● ONLINE</div></header><section><div class="orb" id="orb"></div><div class="hello"><h1>Good evening, Boss.</h1><p>Your personal AI assistant is ready.</p></div></section><section class="chat" id="chat"><div class="msg bot">JARVIS online. How can I help you, Boss?</div></section><div class="quick"><button onclick="say('What can you do?')">Capabilities</button><button onclick="say('Help me plan my study schedule')">Study plan</button><button onclick="say('Explain AI simply')">Explain AI</button></div><form class="composer" onsubmit="send(event)"><input id="input" autocomplete="off" placeholder="Talk to Prem's Jarvis…"><button class="btn mic" type="button" onclick="voice()">🎙️</button><button class="btn" type="submit">SEND</button></form><div class="foot">PREM'S JARVIS • Responsive on phone, tablet and PC</div></main><script>
-const chat=document.getElementById('chat'),input=document.getElementById('input'),orb=document.getElementById('orb'),status=document.getElementById('status');let history=[];
-function add(text,who){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
-function say(t){input.value=t;send(new Event('submit'))}
-async function send(e){e.preventDefault();const text=input.value.trim();if(!text)return;add(text,'user');input.value='';orb.classList.add('active');status.textContent='● THINKING';try{history.push({role:'user',content:text});const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Request failed');history.push({role:'assistant',content:data.reply});add(data.reply,'bot');speak(data.reply)}catch(err){add('I need my AI connection configured first. '+err.message,'bot')}finally{orb.classList.remove('active');status.textContent='● ONLINE'}}
-function voice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){add('Voice input is not supported in this browser.','bot');return}const r=new SR();r.lang='en-IN';r.onstart=()=>status.textContent='● LISTENING';r.onresult=e=>{input.value=e.results[0][0].transcript;send(new Event('submit'))};r.onend=()=>status.textContent='● ONLINE';r.start()}
-function speak(t){if('speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=1;u.pitch=1;speechSynthesis.speak(u)}}
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHIKKY - AI Assistant</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+margin:0;
+min-height:100vh;
+background:
+radial-gradient(circle at 50% 10%,#12364d 0,#06111c 35%,#02050a 80%);
+color:#e9fbff;
+font-family:Arial, sans-serif;
+}
+
+.app{
+max-width:1000px;
+margin:auto;
+min-height:100vh;
+padding:15px;
+display:flex;
+flex-direction:column;
+}
+
+.top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px;
+border:1px solid #17465c;
+background:#06121ddd;
+border-radius:20px;
+}
+
+.brand{
+font-size:20px;
+font-weight:bold;
+letter-spacing:3px;
+color:#4ceeff;
+}
+
+.status{
+font-size:12px;
+color:#70f7ff;
+}
+
+.hero{
+text-align:center;
+padding:25px 10px;
+}
+
+.orb{
+width:160px;
+height:160px;
+margin:auto;
+border-radius:50%;
+background:
+radial-gradient(circle,#ffffff 0,#55efff 15%,#08a8d0 35%,#07516c 50%,transparent 70%);
+box-shadow:
+0 0 30px #00eaff,
+0 0 90px #00cfff55;
+animation:pulse 3s infinite;
+}
+
+.orb.active{
+animation:pulse .7s infinite;
+}
+
+@keyframes pulse{
+50%{
+transform:scale(1.06);
+filter:brightness(1.3);
+}
+}
+
+h1{
+font-size:42px;
+margin:20px 0 5px;
+}
+
+.sub{
+color:#89aab7;
+}
+
+.panel{
+border:1px solid #153b4e;
+background:#040b13dd;
+border-radius:22px;
+padding:15px;
+}
+
+.chat{
+height:420px;
+overflow:auto;
+}
+
+.msg{
+max-width:85%;
+padding:13px;
+margin:10px 0;
+border-radius:16px;
+line-height:1.5;
+white-space:pre-wrap;
+}
+
+.bot{
+background:#081620;
+border:1px solid #153b4e;
+}
+
+.user{
+margin-left:auto;
+background:#07384d;
+border:1px solid #12647e;
+}
+
+.quick{
+display:flex;
+gap:8px;
+overflow:auto;
+margin:10px 0;
+}
+
+.quick button{
+white-space:nowrap;
+background:#07151f;
+color:#9df3fa;
+border:1px solid #174456;
+border-radius:20px;
+padding:9px 13px;
+}
+
+.composer{
+display:flex;
+gap:8px;
+}
+
+input{
+flex:1;
+min-width:0;
+background:#061019;
+color:white;
+border:1px solid #194459;
+border-radius:15px;
+padding:15px;
+outline:none;
+}
+
+button{
+cursor:pointer;
+}
+
+.send{
+background:#082b3b;
+color:#c9fbff;
+border:1px solid #1c7891;
+border-radius:15px;
+padding:0 18px;
+font-weight:bold;
+}
+
+.mic{
+width:55px;
+background:#082b3b;
+color:white;
+border:1px solid #1c7891;
+border-radius:15px;
+}
+
+.footer{
+text-align:center;
+color:#55737e;
+font-size:11px;
+padding:12px;
+}
+
+@media(max-width:600px){
+h1{font-size:30px}
+.orb{width:135px;height:135px}
+.chat{height:360px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header class="top">
+<div class="brand">CHIKKY // AI</div>
+<div class="status" id="status">● ONLINE</div>
+</header>
+
+<section class="hero">
+
+<div class="orb" id="orb"></div>
+
+<h1>Good evening, Boss.</h1>
+
+<p class="sub">
+Your intelligent personal AI assistant is ready.
+</p>
+
+</section>
+
+<section class="panel">
+
+<div class="chat" id="chat">
+
+<div class="msg bot">
+CHIKKY online. I'm ready, Boss. Ask me anything.
+</div>
+
+</div>
+
+<div class="quick">
+
+<button onclick="ask('What can you do?')">
+Capabilities
+</button>
+
+<button onclick="ask('Help me make a study plan')">
+Study Plan
+</button>
+
+<button onclick="ask('Explain artificial intelligence simply')">
+Explain AI
+</button>
+
+<button onclick="ask('Give me ideas to build an AI tool')">
+AI Ideas
+</button>
+
+</div>
+
+<form class="composer" onsubmit="send(event)">
+
+<input
+id="input"
+autocomplete="off"
+placeholder="Talk to CHIKKY..."
+>
+
+<button
+class="mic"
+type="button"
+onclick="voice()">
+🎙️
+</button>
+
+<button
+class="send"
+type="submit">
+SEND
+</button>
+
+</form>
+
+<div class="footer">
+CHIKKY • AI CHAT • VOICE INPUT • VOICE REPLIES
+</div>
+
+</section>
+
+</div>
+
+<script>
+
+const chat =
+document.getElementById("chat");
+
+const input =
+document.getElementById("input");
+
+const orb =
+document.getElementById("orb");
+
+const status =
+document.getElementById("status");
+
+let history=[];
+
+function add(text,who){
+
+const div=document.createElement("div");
+
+div.className="msg "+who;
+
+div.textContent=text;
+
+chat.appendChild(div);
+
+chat.scrollTop=chat.scrollHeight;
+
+}
+
+function ask(text){
+
+input.value=text;
+
+send();
+
+}
+
+async function send(e){
+
+if(e)e.preventDefault();
+
+const text=input.value.trim();
+
+if(!text)return;
+
+add(text,"user");
+
+input.value="";
+
+orb.classList.add("active");
+
+status.textContent="● THINKING";
+
+history.push({
+role:"user",
+content:text
+});
+
+try{
+
+const response=await fetch("/api/chat",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+messages:history
+})
+
+});
+
+const data=await response.json();
+
+if(!response.ok){
+
+throw new Error(
+data.error || "AI connection failed"
+);
+
+}
+
+const reply=data.reply;
+
+history.push({
+role:"assistant",
+content:reply
+});
+
+add(reply,"bot");
+
+speak(reply);
+
+}
+
+catch(error){
+
+add(
+"CHIKKY connection error: "+
+error.message,
+"bot"
+);
+
+}
+
+finally{
+
+orb.classList.remove("active");
+
+status.textContent="● ONLINE";
+
+}
+
+}
+
+function voice(){
+
+const SpeechRecognition =
+window.SpeechRecognition ||
+window.webkitSpeechRecognition;
+
+if(!SpeechRecognition){
+
+add(
+"Voice input is not supported in this browser.",
+"bot"
+);
+
+return;
+
+}
+
+const recognition =
+new SpeechRecognition();
+
+recognition.lang="en-IN";
+
+recognition.onstart=function(){
+
+status.textContent="● LISTENING";
+
+};
+
+recognition.onresult=function(event){
+
+input.value=
+event.results[0][0].transcript;
+
+send();
+
+};
+
+recognition.onend=function(){
+
+status.textContent="● ONLINE";
+
+};
+
+recognition.start();
+
+}
+
+function speak(text){
+
+if(!("speechSynthesis" in window))
+return;
+
+speechSynthesis.cancel();
+
+const voice=
+new SpeechSynthesisUtterance(text);
+
+voice.rate=1;
+
+voice.pitch=1;
+
+speechSynthesis.speak(voice);
+
+}
+
+</script>
+
+</body>
+  </html>
