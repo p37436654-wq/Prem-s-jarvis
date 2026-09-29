@@ -16,44 +16,58 @@ export default async function handler(req, res) {
   try {
     const { messages = [] } = req.body || {};
 
-    const contents = messages
-      .filter(
-        (m) =>
-          m &&
-          (m.role === "user" || m.role === "assistant") &&
-          typeof m.content === "string"
-      )
-      .slice(-16)
-      .map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }]
-      }));
+    const safeMessages = Array.isArray(messages)
+      ? messages
+          .filter(
+            (m) =>
+              m &&
+              (m.role === "user" || m.role === "assistant") &&
+              typeof m.content === "string"
+          )
+          .slice(-16)
+      : [];
+
+    const input = safeMessages.map((m) => ({
+      type: m.role === "assistant"
+        ? "model_output"
+        : "user_input",
+      content: [
+        {
+          type: "text",
+          text: m.content
+        }
+      ]
+    }));
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/interactions",
       {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey
         },
+
         body: JSON.stringify({
-          system_instruction: {
-            parts: [
-              {
-                text:
-                  "You are CHIKKY, Boss's personal AI assistant. " +
-                  "Call the user Boss naturally. " +
-                  "Be helpful, friendly, intelligent and clear. " +
-                  "Never claim to perform actions you cannot actually perform."
-              }
-            ]
+          model: "gemini-3.8-flash",
+
+          system_instruction:
+            "You are CHIKKY, Boss's personal AI assistant. " +
+            "Call the user Boss naturally. " +
+            "Be intelligent, friendly, practical and clear. " +
+            "Help with studying, mathematics, coding, AI projects, " +
+            "planning, brainstorming and general questions. " +
+            "Never claim to perform actions you cannot actually perform.",
+
+          input: input,
+
+          generation_config: {
+            max_output_tokens: 1000,
+            thinking_level: "low"
           },
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1000
-          }
+
+          store: false
         })
       }
     );
@@ -64,15 +78,25 @@ export default async function handler(req, res) {
       return res.status(response.status).json({
         error:
           data?.error?.message ||
-          "Gemini API request failed."
+          "Gemini request failed."
       });
     }
 
+    const steps = data?.steps || [];
+
+    const modelStep = [...steps]
+      .reverse()
+      .find(
+        (step) =>
+          step.type === "model_output"
+      );
+
     const reply =
-      data?.candidates?.[0]?.content?.parts
+      modelStep?.content
+        ?.filter((part) => part.type === "text")
         ?.map((part) => part.text || "")
-        .join("")
-        .trim();
+        ?.join("")
+        ?.trim();
 
     if (!reply) {
       return res.status(500).json({
@@ -85,10 +109,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("CHIKKY ERROR:", error);
 
     return res.status(500).json({
-      error: error?.message || "Server error"
+      error:
+        error?.message ||
+        "Server error"
     });
   }
-}
+  }
