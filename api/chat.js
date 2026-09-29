@@ -5,11 +5,11 @@ export default async function handler(req, res) {
     });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
     return res.status(500).json({
-      error: "GEMINI_API_KEY is missing in Vercel."
+      error: "GROQ_API_KEY is missing in Vercel."
     });
   }
 
@@ -21,53 +21,68 @@ export default async function handler(req, res) {
           .filter(
             (m) =>
               m &&
-              (m.role === "user" || m.role === "assistant") &&
+              (m.role === "user" ||
+                m.role === "assistant") &&
               typeof m.content === "string"
           )
           .slice(-16)
       : [];
 
-    const input = safeMessages.map((m) => ({
-      type: m.role === "assistant"
-        ? "model_output"
-        : "user_input",
-      content: [
-        {
-          type: "text",
-          text: m.content
-        }
-      ]
-    }));
+    const groqMessages = [
+      {
+        role: "system",
+        content: `
+You are CHIKKY, Boss's intelligent personal AI assistant.
+
+Call the user "Boss" naturally.
+
+Be:
+- intelligent
+- friendly
+- practical
+- clear
+- helpful
+- concise when possible
+
+You can help with:
+- studying
+- mathematics
+- coding
+- programming
+- AI projects
+- planning
+- brainstorming
+- productivity
+- general questions
+
+Explain difficult topics step by step.
+
+Never claim that you can control devices,
+access private information, or perform actions
+unless an actual tool provides that capability.
+
+If you cannot verify current information,
+say so clearly.
+`
+      },
+      ...safeMessages
+    ];
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/interactions",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
 
         headers: {
           "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
+          "Authorization": `Bearer ${apiKey}`
         },
 
         body: JSON.stringify({
-          model: "gemini-3.8-flash",
-
-          system_instruction:
-            "You are CHIKKY, Boss's personal AI assistant. " +
-            "Call the user Boss naturally. " +
-            "Be intelligent, friendly, practical and clear. " +
-            "Help with studying, mathematics, coding, AI projects, " +
-            "planning, brainstorming and general questions. " +
-            "Never claim to perform actions you cannot actually perform.",
-
-          input: input,
-
-          generation_config: {
-            max_output_tokens: 1000,
-            thinking_level: "low"
-          },
-
-          store: false
+          model: "openai/gpt-oss-20b",
+          messages: groqMessages,
+          temperature: 0.7,
+          max_completion_tokens: 1000
         })
       }
     );
@@ -78,29 +93,16 @@ export default async function handler(req, res) {
       return res.status(response.status).json({
         error:
           data?.error?.message ||
-          "Gemini request failed."
+          "Groq API request failed."
       });
     }
 
-    const steps = data?.steps || [];
-
-    const modelStep = [...steps]
-      .reverse()
-      .find(
-        (step) =>
-          step.type === "model_output"
-      );
-
     const reply =
-      modelStep?.content
-        ?.filter((part) => part.type === "text")
-        ?.map((part) => part.text || "")
-        ?.join("")
-        ?.trim();
+      data?.choices?.[0]?.message?.content?.trim();
 
     if (!reply) {
       return res.status(500).json({
-        error: "Gemini returned no text."
+        error: "Groq returned an empty response."
       });
     }
 
@@ -117,4 +119,4 @@ export default async function handler(req, res) {
         "Server error"
     });
   }
-  }
+}
